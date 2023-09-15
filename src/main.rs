@@ -1,13 +1,14 @@
+use std::env::{current_dir, set_current_dir};
 use std::io::{self, Write};
-use std::env::current_dir;
 use std::process::{exit, Stdio};
-use crate::{exec::Executor}
 
 fn read_line(prompt: &str) -> String {
     print!("{}", prompt);
     io::stdout().flush().unwrap();
     let mut buffer = String::new();
-    io::stdin().read_line(&mut buffer).expect("read_line failed");
+    io::stdin()
+        .read_line(&mut buffer)
+        .expect("read_line failed");
     buffer
 }
 
@@ -27,7 +28,7 @@ fn exec(commando: Vec<&str>) -> io::Result<()> {
         Ok(child) => child,
         Err(_) => {
             println!("rish: could not execute command: {}", program);
-            return Ok(())
+            return Ok(());
         }
     };
     let output = child.wait_with_output()?;
@@ -37,7 +38,7 @@ fn exec(commando: Vec<&str>) -> io::Result<()> {
 }
 
 fn parse_line(buf: &str) -> Vec<&str> {
-    let mut parts = buf.trim_end().split_whitespace();
+    let mut parts = buf.split_whitespace();
     let program = match parts.next() {
         Some(program) => program,
         None => return vec![],
@@ -61,18 +62,28 @@ fn main() {
         let buf = read_line(&prompt);
         let parsed_line = parse_line(&buf);
 
-        if parsed_line.len() == 0 {
+        if parsed_line.is_empty() {
             println!();
             continue;
         }
 
+        // ここで shell コマンドか外部コマンドかを判定する
+        // shell コマンドの場合は、そのコマンドを実行する
         match parsed_line[0] {
             "exit" => break 0,
-            _ => {()},
+            "cd" => {
+                let result = set_current_dir(parsed_line[1]);
+                match result {
+                    Ok(_) => (),
+                    Err(_) => println!("cd: could not change directory"),
+                };
+                continue;
+            }
+            _ => (),
         };
         let result = exec(parsed_line);
         match result {
-            Ok(_) => {()},
+            Ok(_) => (),
             Err(_) => {
                 println!("Error: could not execute command");
                 break 1;
